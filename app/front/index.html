@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo List</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      width: 100%;
+      max-width: 480px;
+      padding: 32px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus { border-color: #6c63ff; }
+
+    button.add-btn {
+      padding: 10px 18px;
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button.add-btn:hover { background: #574fd6; }
+
+    ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #fafafa;
+      border: 1.5px solid #ececec;
+      transition: opacity .15s;
+    }
+    li.done { opacity: .5; }
+    li.done .todo-title { text-decoration: line-through; color: #999; }
+
+    input[type="checkbox"] {
+      width: 18px; height: 18px;
+      accent-color: #6c63ff;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .todo-title { flex: 1; font-size: 0.95rem; color: #333; }
+
+    button.del-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #ccc;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color .15s;
+    }
+    button.del-btn:hover { color: #e74c3c; }
+
+    .empty { text-align: center; color: #bbb; font-size: 0.9rem; padding: 24px 0; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Ma Todo List</h1>
+  <div class="input-row">
+    <input type="text" id="new-todo" placeholder="Nouvelle tâche…" />
+    <button class="add-btn" onclick="addTodo()">Ajouter</button>
+  </div>
+  <ul id="list"></ul>
+  <p class="empty" id="empty" style="display:none">Aucune tâche pour l'instant.</p>
+</div>
+
+<script>
+  const API = window.API_URL || '';
+
+  async function load() {
+    const res = await fetch(`${API}/todos`);
+    const todos = await res.json();
+    render(todos);
+  }
+
+  function render(todos) {
+    const ul = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    ul.innerHTML = '';
+    if (!todos.length) { empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    todos.forEach(t => {
+      const li = document.createElement('li');
+      if (t.done) li.classList.add('done');
+      li.innerHTML = `
+        <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggle(${t.id}, this.checked)" />
+        <span class="todo-title">${escape(t.title)}</span>
+        <button class="del-btn" onclick="remove(${t.id})" title="Supprimer">✕</button>
+      `;
+      ul.appendChild(li);
+    });
+  }
+
+  async function addTodo() {
+    const input = document.getElementById('new-todo');
+    const title = input.value.trim();
+    if (!title) return;
+    await fetch(`${API}/todos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    input.value = '';
+    load();
+  }
+
+  async function toggle(id, done) {
+    await fetch(`${API}/todos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    });
+    load();
+  }
+
+  async function remove(id) {
+    await fetch(`${API}/todos/${id}`, { method: 'DELETE' });
+    load();
+  }
+
+  function escape(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  document.getElementById('new-todo').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTodo();
+  });
+
+  load();
+</script>
+</body>
+</html>
